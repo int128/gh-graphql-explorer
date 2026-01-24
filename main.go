@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"net/http"
 
@@ -14,50 +13,52 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 12345, "Port number to listen on")
+	var port int
+	flag.IntVar(&port, "port", 12345, "Port number to listen on")
 	flag.Parse()
-	if err := startServer(*port); err != nil {
+	if err := startServer(port); err != nil {
 		log.Fatalf("error: %v", err)
 	}
 }
 
-//go:embed static
+//go:embed index.html
 var staticFS embed.FS
 
 func startServer(port int) error {
-	staticRootFS, err := fs.Sub(staticFS, "static")
-	if err != nil {
-		return fmt.Errorf("fs.Sub: %w", err)
-	}
-	http.Handle("GET /", http.FileServerFS(staticRootFS))
+	http.Handle("GET /", http.FileServerFS(staticFS))
 
-	client, err := api.DefaultHTTPClient()
+	graphqlProxy, err := newGraphQLProxy()
 	if err != nil {
-		return fmt.Errorf("create GitHub client: %w", err)
+		return fmt.Errorf("create GraphQL proxy: %w", err)
 	}
-	http.Handle("POST /graphql", &graphqlProxy{client: client, endpoint: graphqlEndpoint()})
+	http.Handle("POST /graphql", graphqlProxy)
 
 	log.Printf("gh-graphql-explorer is available at http://localhost:%d", port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil); err != nil {
-		return fmt.Errorf("http.Serve: %w", err)
+		return fmt.Errorf("http server: %w", err)
 	}
 	return nil
 }
 
-func graphqlEndpoint() string {
+func newGraphQLProxy() (*proxyHandler, error) {
 	host, _ := auth.DefaultHost()
+	endpoint := fmt.Sprintf("https://api.%s/graphql", host)
 	if auth.IsEnterprise(host) {
-		return fmt.Sprintf("https://%s/api/graphql", host)
+		endpoint = fmt.Sprintf("https://%s/api/graphql", host)
 	}
-	return fmt.Sprintf("https://api.%s/graphql", host)
+	client, err := api.DefaultHTTPClient()
+	if err != nil {
+		return nil, fmt.Errorf("create GitHub client: %w", err)
+	}
+	return &proxyHandler{client: client, endpoint: endpoint}, nil
 }
 
-type graphqlProxy struct {
+type proxyHandler struct {
 	client   *http.Client
 	endpoint string
 }
 
-func (h *graphqlProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	req, err := http.NewRequestWithContext(r.Context(), r.Method, h.endpoint, r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("proxy error: %v", err), http.StatusInternalServerError)
