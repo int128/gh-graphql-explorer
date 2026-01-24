@@ -49,13 +49,12 @@
       import { explorerPlugin } from '@graphiql/plugin-explorer';
       import 'graphiql/setup-workers/esm.sh';
 
-      const App = () => React.createElement(GraphiQL, {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(GraphiQL, {
         fetcher: createGraphiQLFetcher({ url: '/graphql' }),
         plugins: [HISTORY_PLUGIN, explorerPlugin()],
         defaultEditorToolsVisibility: true,
-      });
-      const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(React.createElement(App));
+      }));
     </script>
   </head>
   <body>
