@@ -5,7 +5,8 @@ This is a GitHub CLI extension that provides [GraphiQL](https://github.com/graph
 ## Getting Started
 
 [GitHub CLI](https://cli.github.com) is required.
-Install the extension:
+
+Install the extension from this repository:
 
 ```bash
 gh extension install int128/gh-graphql-explorer
@@ -19,6 +20,7 @@ $ gh graphql-explorer
 ```
 
 Open the URL in your browser.
+
 You can execute GraphQL queries with your GitHub authentication.
 
 <img width="1402" height="821" alt="image" src="https://github.com/user-attachments/assets/6c6b4717-69ce-4109-8a22-b8cccff332b7" />
